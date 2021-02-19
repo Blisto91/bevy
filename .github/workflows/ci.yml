@@ -9,7 +9,32 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  update-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Generate Cargo.lock
+        run: cargo generate-lockfile
+        
+      - name: Upload Cargo.lock
+        uses: actions/upload-artifact@v2
+        with:
+          name: lockfile
+          path: Cargo.lock
+
+
   build:
+    needs: update-deps
+    env:
+      CARGO_INCREMENTAL: 0
     strategy:
       matrix:
         toolchain: [stable, nightly]
@@ -28,6 +53,22 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           components: rustfmt, clippy
           override: true
+
+      - name: Download Cargo.lock
+        uses: actions/download-artifact@v2
+        with:
+          name: lockfile
+
+      - id: target-cache
+        name: Restore target cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target/
+          key: ${{ matrix.os }}-${{ matrix.toolchain }}-build-${{ hashFiles('Cargo.lock') }}
 
       - name: Install alsa and udev
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
