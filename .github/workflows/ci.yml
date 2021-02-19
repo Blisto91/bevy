@@ -70,6 +70,8 @@ jobs:
 
       - name: install sccache
         run: cargo install sccache
+        env:
+          RUSTC_WRAPPER: ""
 
       - name: Download Cargo.lock
         uses: actions/download-artifact@v2
