@@ -35,6 +35,8 @@ jobs:
     needs: update-deps
     env:
       CARGO_INCREMENTAL: 0
+      RUSTC_WRAPPER: ${{ matrix.RUSTC_WRAPPER }}
+      SCCACHE_DIR: ${{ matrix.SCCACHE_DIR }}
     strategy:
       matrix:
         toolchain: [stable, nightly]
@@ -44,7 +46,19 @@ jobs:
             toolchain: nightly
           - os: windows-latest
             toolchain: nightly
-    runs-on: ${{ matrix.os }}
+        include:
+        - os: macos-latest
+          RUSTC_WRAPPER: ~/.cargo/bin/sccache
+          SCCACHE_DIR: ~/Library/Caches/Mozilla.sccache
+        - os: windows-latest
+          RUSTC_WRAPPER: ~/.cargo/bin/sccache.exe
+          SCCACHE_DIR: "%LOCALAPPDATA%/Mozilla/sccache"
+        - os: ubuntu-latest
+          RUSTC_WRAPPER: ~/.cargo/bin/sccache
+          SCCACHE_DIR: ~/.cache/sccache
+
+
+    runs-on: ${{ matrix.os }}    
     steps:
       - uses: actions/checkout@v2
 
@@ -60,14 +74,10 @@ jobs:
           name: lockfile
 
       - id: target-cache
-        name: Restore target cache
+        name: Restore cache
         uses: actions/cache@v2
         with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target/
+          path: ${{ matrix.SCCACHE_DIR }}
           key: ${{ matrix.os }}-${{ matrix.toolchain }}-build-${{ hashFiles('Cargo.lock') }}
 
       - name: Install alsa and udev
@@ -77,6 +87,9 @@ jobs:
       - name: Check the format
         run: cargo fmt --all -- --check
         if: runner.os == 'linux' && matrix.toolchain == 'stable'
+        
+      - name: start sccache
+        run: sccache --start-server
 
       # type complexity must be ignored because we use huge templates for queries
       # -A clippy::manual-strip: strip_prefix support was added in 1.45. we want to support earlier rust versions
@@ -90,51 +103,5 @@ jobs:
           CARGO_INCREMENTAL: 0
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
-  build-wasm:
-    strategy:
-      matrix:
-        toolchain: [stable, nightly]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.toolchain }}
-          target: wasm32-unknown-unknown
-          override: true
-
-      - name: Check wasm
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --target wasm32-unknown-unknown --no-default-features --features bevy_winit,x11,hdr,bevy_gltf
-
-  build-android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install Android targets
-        run: rustup target add aarch64-linux-android armv7-linux-androideabi
-      - name: Install Cargo APK
-        run: cargo install cargo-apk
-        
-      - name: Download Cargo.lock
-        uses: actions/download-artifact@v2
-        with:
-          name: lockfile
-
-      - id: target-cache
-        name: Restore target cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target/
-          key: ${{ matrix.os }}-${{ matrix.toolchain }}-build-${{ hashFiles('Cargo.lock') }}
-        
-      - name: Build APK
-        run: cargo apk build --example android
+      - name: stop sccache
+        run: sccache --stop-server
