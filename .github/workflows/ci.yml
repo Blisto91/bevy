@@ -119,5 +119,22 @@ jobs:
         run: rustup target add aarch64-linux-android armv7-linux-androideabi
       - name: Install Cargo APK
         run: cargo install cargo-apk
+        
+      - name: Download Cargo.lock
+        uses: actions/download-artifact@v2
+        with:
+          name: lockfile
+
+      - id: target-cache
+        name: Restore target cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target/
+          key: ${{ matrix.os }}-${{ matrix.toolchain }}-build-${{ hashFiles('Cargo.lock') }}
+        
       - name: Build APK
         run: cargo apk build --example android
