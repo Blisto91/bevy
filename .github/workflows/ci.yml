@@ -35,7 +35,6 @@ jobs:
     needs: update-deps
     env:
       CARGO_INCREMENTAL: 0
-      SCCACHE_DIR: ${{ matrix.SCCACHE_DIR }}
     strategy:
       matrix:
         toolchain: [stable, nightly]
@@ -101,12 +100,14 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings -A clippy::type_complexity -A clippy::manual-strip
         env:
           RUSTC_WRAPPER: ${{ matrix.RUSTC_WRAPPER }}
+          SCCACHE_DIR: ${{ matrix.SCCACHE_DIR }}
         if: runner.os == 'linux' && matrix.toolchain == 'stable'
 
       - name: Build & run tests
         run: cargo test --workspace
         env:
           RUSTC_WRAPPER: ${{ matrix.RUSTC_WRAPPER }}
+          SCCACHE_DIR: ${{ matrix.SCCACHE_DIR }}
           RUSTFLAGS: "-C debuginfo=0 -D warnings"
 
       - name: stop sccache
