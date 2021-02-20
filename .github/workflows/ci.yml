@@ -67,9 +67,9 @@ jobs:
           override: true
 
       - name: Install sccache
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
-        with: # Grab the latest version
-          repo: mozilla/sccache
+        run: |
+          curl --silent "https://api.github.com/mozilla/sccache/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")'
+        shell: bash
 
       - name: Download Cargo.lock
         uses: actions/download-artifact@v2
