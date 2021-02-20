@@ -66,10 +66,10 @@ jobs:
           components: rustfmt, clippy
           override: true
 
-      - name: install sccache
-        run: cargo install sccache
-        env:
-          RUSTC_WRAPPER: ""
+      - name: Install sccache
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with: # Grab the latest version
+          repo: mozilla/sccache
 
       - name: Download Cargo.lock
         uses: actions/download-artifact@v2
